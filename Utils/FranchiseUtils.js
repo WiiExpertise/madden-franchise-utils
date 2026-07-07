@@ -407,9 +407,13 @@ function selectFranchiseFile(gameYear, isAutoUnemptyEnabled = false, isFtcFile =
  * @param {boolean} [isFtcFile=false] - Whether the file is an FTC file. You can almost always leave this as false.
  * @returns {Object} - The selected Franchise object.
  */
-async function selectFranchiseFileAsync(gameYear, isAutoUnemptyEnabled = false, isFtcFile = false) {
-  const documentsDir = path.join(os.homedir(), `Documents\\Madden NFL ${gameYear}\\saves\\`);
-  const oneDriveDir = path.join(os.homedir(), `OneDrive\\Documents\\Madden NFL ${gameYear}\\saves\\`);
+async function selectFranchiseFileAsync(gameYear, isAutoUnemptyEnabled = false, isFtcFile = false, gameType = GAME_TYPES.MADDEN) {
+  const isCfb = gameType === GAME_TYPES.CFB;
+  
+  const savesFolderName = isCfb ? 'EA Sports College Football' : 'Madden NFL';
+  
+  const documentsDir = path.join(os.homedir(), `Documents\\${savesFolderName} ${gameYear}\\saves\\`);
+  const oneDriveDir = path.join(os.homedir(), `OneDrive\\Documents\\${savesFolderName} ${gameYear}\\saves\\`);
   const filePrefix = isFtcFile ? FTC_FILE_INIT_KWD : BASE_FILE_INIT_KWD;
 
   let defaultPath;
@@ -419,7 +423,7 @@ async function selectFranchiseFileAsync(gameYear, isAutoUnemptyEnabled = false, 
     defaultPath = oneDriveDir;
   } else {
     console.log(
-      `IMPORTANT! Couldn't find the path to your Madden ${gameYear} save files. Checked: ${documentsDir}, ${oneDriveDir}`,
+      `IMPORTANT! Couldn't find the path to your ${savesFolderName} ${gameYear} save files. Checked: ${documentsDir}, ${oneDriveDir}`,
     );
   }
 
@@ -574,11 +578,13 @@ async function readTableRecords(tablesList, continueIfError = false, franchise =
 
  * @returns {number} - Returns the selected gameYear
  */
-function getGameYear(validGameYears, customMessage = null) {
+function getGameYear(validGameYears, customMessage = null, gameType = GAME_TYPES.MADDEN) {
   // If we didn't pass through an array, simply return the value
   if (!Array.isArray(validGameYears)) {
     return parseInt(validGameYears);
   }
+
+  validGameYears = validGameYears.filter((year) => YEARS_BY_GAME[gameType].includes(year));
 
   if (validGameYears.length === 1) {
     return parseInt(validGameYears[0]); // Return the integer value directly
@@ -588,7 +594,7 @@ function getGameYear(validGameYears, customMessage = null) {
   const validGameYearsStr = validGameYears.map(String);
 
   while (true) {
-    const defaultMessage = `Select the version of Madden your franchise file uses. Valid inputs are ${validGameYears.join(
+    const defaultMessage = `Select the version of ${gameType} your franchise file uses. Valid inputs are ${validGameYears.join(
       ", ",
     )}. Or, enter 0 to exit.`;
     const message = customMessage !== null ? customMessage : defaultMessage;
@@ -3722,6 +3728,7 @@ module.exports = {
   saveFranchiseFile,
   getSaveFilePath,
   getGameYear,
+  getGameType,
   readTableRecords,
   getTablesObject,
   getColumnNames,
