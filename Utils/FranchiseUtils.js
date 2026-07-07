@@ -1,6 +1,6 @@
 const Franchise = require("madden-franchise").FranchiseFile;
 const { getBinaryReferenceData } = require("madden-franchise").utilService;
-const { tables, tablesM25, tablesM26 } = require("./FranchiseTableId");
+const { tables, tablesM25, tablesM26, tablesM27, tablesC27 } = require("./FranchiseTableId");
 const path = require("path");
 const os = require("os");
 const fs = require("fs");
@@ -17,6 +17,8 @@ const ZERO_REF = "00000000000000000000000000000000";
 const EMPTY_STRING = "";
 const BASE_FILE_INIT_KWD = "CAREER";
 const FTC_FILE_INIT_KWD = "franchise-";
+const CFB_BASE_FILE_INIT_KWD = "DYNASTY-";
+const CFB_FTC_FILE_INIT_KWD = "dynasty-";
 const Y_KWD = "Y";
 const N_KWD = "N";
 const YES_KWD = "YES";
@@ -36,6 +38,16 @@ const YEARS = {
   M26: 26,
   M27: 27,
 };
+
+const GAME_TYPES = {
+  MADDEN: "madden",
+  CFB: "college",
+};
+
+const YEARS_BY_GAME = {
+  [GAME_TYPES.MADDEN]: [YEARS.M19, YEARS.M20, YEARS.M21, YEARS.M22, YEARS.M23, YEARS.M24, YEARS.M25, YEARS.M26, YEARS.M27],
+  [GAME_TYPES.CFB]: [YEARS.M27],
+}
 
 // TYPES OF SAVE FILES
 const SAVE_TYPES = {
@@ -273,22 +285,31 @@ const MAX_FIELD_VALUES = {
  * @param {boolean} [options.isFtcFile=false] - Is the franchise file an FTC file?
  * @param {boolean} [options.promptForBackup=true] - Prompt the user to make a backup of their selected save file?
  * @param {boolean} [options.skipYearValidation=false] - Skip the game year validation?
+ * @param {boolean} [options.skipGameValidation=false] - Skip the game type validation?
  * @param {string} [options.customYearMessage=null] - Custom message when selecting a valid year.
+ * @param {string} [options.customGameTypeMessage=null] - Custom message when selecting a game type.
  * @param {string} [options.customFranchiseMessage=null] - Custom message when selecting a franchise file.
  * @returns {Object} - The Franchise object.
  */
-function init(validGameYears, options = {}) {
+function init(validGameYears, options = {}, validGameTypes = [GAME_TYPES.MADDEN]) {
   const {
     isAutoUnemptyEnabled = false,
     isFtcFile = false,
     promptForBackup = true,
     customYearMessage = null,
+    customGameTypeMessage = null,
     customFranchiseMessage = null,
     skipYearValidation = false,
+    skipGameValidation = false,
   } = options;
 
+  const gameType = getGameType(validGameTypes, customGameTypeMessage);
+
+  validGameYears = validGameYears.filter((year) => YEARS_BY_GAME[gameType].includes(year));
+
   const gameYear = getGameYear(validGameYears, customYearMessage);
-  const franchise = selectFranchiseFile(gameYear, isAutoUnemptyEnabled, isFtcFile, customFranchiseMessage);
+  const franchise = selectFranchiseFile(gameYear, isAutoUnemptyEnabled, isFtcFile, customFranchiseMessage, gameType);
+  if (!skipGameValidation && !isFtcFile) validateGameType(franchise, gameType);
   if (!skipYearValidation && !isFtcFile) validateGameYears(franchise, validGameYears);
 
   if (promptForBackup) {
@@ -320,23 +341,29 @@ function init(validGameYears, options = {}) {
  * @param {boolean} [isAutoUnemptyEnabled=false] - If true, rows will always be unemptied upon editing. If you aren't sure, leave this as false.
  *                                                 Keep in mind: Editing the first column of an empty row will ALWAYS unempty the row, even if this is false.
  * @param {boolean} [isFtcFile=false] - Whether the file is an FTC file. You can almost always leave this as false.
+ * @param {string} [customMessage=null] - Optional custom message to replace the default franchise file selection prompt.
+ * @param {string} [gameType=GAME_TYPES.MADDEN] - The type of game (Madden or CFB).
  * @returns {Object} - The selected Franchise object.
  */
-function selectFranchiseFile(gameYear, isAutoUnemptyEnabled = false, isFtcFile = false, customMessage = null) {
-  const documentsDir = path.join(os.homedir(), `Documents\\Madden NFL ${gameYear}\\saves\\`);
-  const oneDriveDir = path.join(os.homedir(), `OneDrive\\Documents\\Madden NFL ${gameYear}\\saves\\`);
+function selectFranchiseFile(gameYear, isAutoUnemptyEnabled = false, isFtcFile = false, customMessage = null, gameType = GAME_TYPES.MADDEN) {
+  const isCfb = gameType === GAME_TYPES.CFB;
+  
+  const savesFolderName = isCfb ? 'EA Sports College Football' : 'Madden NFL';
+  
+  const documentsDir = path.join(os.homedir(), `Documents\\${savesFolderName} ${gameYear}\\saves\\`);
+  const oneDriveDir = path.join(os.homedir(), `OneDrive\\Documents\\${savesFolderName} ${gameYear}\\saves\\`);
   const defaultPath = fs.existsSync(documentsDir) ? documentsDir : fs.existsSync(oneDriveDir) ? oneDriveDir : null;
 
   if (!defaultPath) {
     console.log(
-      `IMPORTANT! Couldn't find the path to your Madden ${gameYear} save files. Checked: ${documentsDir}, ${oneDriveDir}`,
+      `IMPORTANT! Couldn't find the path to your ${savesFolderName} ${gameYear} save files. Checked: ${documentsDir}, ${oneDriveDir}`,
     );
   }
 
-  const filePrefix = isFtcFile ? FTC_FILE_INIT_KWD : BASE_FILE_INIT_KWD;
-  let defaultMessage = `Please enter the name of your Madden ${gameYear} franchise file. Either give the full path of the file OR just give the file name (such as CAREER-BEARS) if it's in your Documents folder. Or, enter 0 to exit.`;
+  const filePrefix = isFtcFile ? (isCfb ? CFB_FTC_FILE_INIT_KWD : FTC_FILE_INIT_KWD) : (isCfb ? CFB_BASE_FILE_INIT_KWD : BASE_FILE_INIT_KWD);
+  let defaultMessage = `Please enter the name of your ${savesFolderName} ${gameYear} franchise file. Either give the full path of the file OR just give the file name (such as CAREER-BEARS) if it's in your Documents folder. Or, enter 0 to exit.`;
   if (!defaultPath) {
-    defaultMessage = `Please enter the full path to your Madden ${gameYear} franchise file. Or, enter 0 to exit.`;
+    defaultMessage = `Please enter the full path to your ${savesFolderName} ${gameYear} franchise file. Or, enter 0 to exit.`;
   }
   const message = customMessage || defaultMessage;
 
@@ -583,24 +610,72 @@ function getGameYear(validGameYears, customMessage = null) {
 }
 
 /**
- * Returns the correct tables object from FranchiseTableId depending on the GameYear of your franchise file.
+ * Takes a list of valid game years and has the user select one.
+ * If the user passes through a string/int instead of a list, it's returned immediately.
+ *
+ * @param {number|string|Array<number|string>} validGameYears - A valid game year or an array of valid game years.
+
+ * @returns {number} - Returns the selected gameYear
+ */
+function getGameType(validGameTypes, customMessage = null) {
+  // If we didn't pass through an array, simply return the value
+  if (!Array.isArray(validGameTypes)) {
+    return validGameTypes;
+  }
+
+  if (validGameTypes.length === 1) {
+    return validGameTypes[0]; // Return the value directly
+  }
+
+  let gameType;
+  const validGameTypesStr = validGameTypes.map(String);
+
+  while (true) {
+    const defaultMessage = `Select the game type you are using. Valid inputs are ${validGameTypes.join(
+      ", ",
+    )}. Or, enter 0 to exit.`;
+    const message = customMessage !== null ? customMessage : defaultMessage;
+    console.log(message);
+    gameType = prompt();
+
+    if (gameType === "0") {
+      EXIT_PROGRAM();
+    }
+
+    if (validGameTypesStr.includes(String(gameType))) {
+      break;
+    } else {
+      console.log("Invalid option. Please try again.");
+    }
+  }
+
+  return gameType;
+}
+
+/**
+ * Returns the correct tables object from FranchiseTableId depending on the GameYear and GameType of your franchise file.
  * If Madden 24 or before, 'tables' will be returned.
  * If Madden 25, tablesM25 will be returned.
  *
- * @param {Object} [franchise] - Franchise Object. We get the gameYear value from this object and
+ * @param {Object} [franchise] - Franchise Object. We get the gameYear and gameType values from this object and
  *                               return the proper tables object.
  * @returns {Object}
  */
 function getTablesObject(franchise) {
   const fileGameYear = Number(franchise.schema.meta.gameYear);
+  const fileGameType = franchise.gameType;
+
+  const isCfb = fileGameType === GAME_TYPES.CFB;
 
   switch (true) {
     case fileGameYear <= 24:
       return tables;
     case fileGameYear === 25:
       return tablesM25;
-    case fileGameYear >= 26:
+    case fileGameYear === 26:
       return tablesM26;
+    case fileGameYear >= 27:
+      return isCfb ? tablesC27 : tablesM27;
     default:
       return tables;
   }
@@ -2609,6 +2684,25 @@ function validateGameYears(franchise, validGameYears) {
 }
 
 /**
+ * Validates the game type of the franchise file against the valid game types for the program.
+ *
+ * @param {Object} franchise - Franchise Object used to get the game type of the selected Franchise File.
+ * @param {string} gameType - A valid game type.
+ */
+function validateGameType(franchise, gameType) {
+  const fileGameType = franchise.gameType;
+
+  // If not already an array, convert it to one
+
+  if (fileGameType !== gameType) {
+    console.log(
+      `Selected franchise file is not a ${gameType} Franchise File. You tried to use a ${fileGameType} Franchise File.`,
+    );
+    EXIT_PROGRAM();
+  }
+}
+
+/**
  * Exits the program.
  */
 function EXIT_PROGRAM() {
@@ -3727,6 +3821,8 @@ module.exports = {
   ZERO_REF, // CONST VARIABLES
   EMPTY_STRING,
   YEARS,
+  GAME_TYPES,
+  YEARS_BY_GAME,
   BASE_FILE_INIT_KWD,
   FTC_FILE_INIT_KWD,
   YES_KWD,
