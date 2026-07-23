@@ -3,19 +3,21 @@
 
 
 const FranchiseUtils = require('../Utils/FranchiseUtils');
-const { getBinaryReferenceData } = require('madden-franchise/services/utilService');
+const { getBinaryReferenceData } = require('madden-franchise').utilService;
 const fs = require('fs');
 
+const validGameTypes = Object.values(FranchiseUtils.GAME_TYPES);
 const validGameYears = Object.values(FranchiseUtils.YEARS);
-const gameYear = FranchiseUtils.getGameYear(validGameYears);
+const gameType = FranchiseUtils.getGameType(validGameTypes);
+const gameYear = FranchiseUtils.getGameYear(validGameYears, null, gameType);
 
-const franchise = FranchiseUtils.selectFranchiseFile(gameYear,false,true);
+const franchise = FranchiseUtils.selectFranchiseFile(gameYear,false,true, null, gameType);
 const tables = FranchiseUtils.getTablesObject(franchise);
 
 // Function I used to manually get certain data from FTC tables into an array, can be modified to be used however you want
 async function getFtcReferences() {
 
-  const currentTable = franchise.getTableByUniqueId(tables.stadiumFtcTable); // Change this to match whatever table you want
+  const currentTable = franchise.getTableByUniqueId(3675518286); // Change this to match whatever table you want
   await currentTable.readRecords();
   const currentTableId = currentTable.header.tableId //Table ID
   let finalArray = [];

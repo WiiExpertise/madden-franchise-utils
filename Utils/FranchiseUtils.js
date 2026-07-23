@@ -305,9 +305,7 @@ function init(validGameYears, options = {}, validGameTypes = [GAME_TYPES.MADDEN]
 
   const gameType = getGameType(validGameTypes, customGameTypeMessage);
 
-  validGameYears = validGameYears.filter((year) => YEARS_BY_GAME[gameType].includes(year));
-
-  const gameYear = getGameYear(validGameYears, customYearMessage);
+  const gameYear = getGameYear(validGameYears, customYearMessage, gameType);
   const franchise = selectFranchiseFile(gameYear, isAutoUnemptyEnabled, isFtcFile, customFranchiseMessage, gameType);
   if (!skipGameValidation && !isFtcFile) validateGameType(franchise, gameType);
   if (!skipYearValidation && !isFtcFile) validateGameYears(franchise, validGameYears);
@@ -348,7 +346,7 @@ function init(validGameYears, options = {}, validGameTypes = [GAME_TYPES.MADDEN]
 function selectFranchiseFile(gameYear, isAutoUnemptyEnabled = false, isFtcFile = false, customMessage = null, gameType = GAME_TYPES.MADDEN) {
   const isCfb = gameType === GAME_TYPES.CFB;
   
-  const savesFolderName = isCfb ? 'EA Sports College Football' : 'Madden NFL';
+  const savesFolderName = isCfb ? 'EA SPORTS College Football' : 'Madden NFL';
   
   const documentsDir = path.join(os.homedir(), `Documents\\${savesFolderName} ${gameYear}\\saves\\`);
   const oneDriveDir = path.join(os.homedir(), `OneDrive\\Documents\\${savesFolderName} ${gameYear}\\saves\\`);
@@ -383,13 +381,13 @@ function selectFranchiseFile(gameYear, isAutoUnemptyEnabled = false, isFtcFile =
         const franchisePathUpper = upperCaseFileName.startsWith(filePrefix)
           ? path.join(defaultPath, upperCaseFileName)
           : upperCaseFileName.replace(new RegExp("/", "g"), "\\");
-        const franchise = new Franchise(franchisePathUpper, { autoUnempty: isAutoUnemptyEnabled });
+        const franchise = new Franchise(franchisePathUpper, { autoUnempty: isAutoUnemptyEnabled, gameYearOverride: isFtcFile ? gameYear : null, gameTypeOverride: isFtcFile ? gameType : null });
         return franchise;
       } catch (e) {
         const franchisePath = fileName.startsWith(filePrefix)
           ? path.join(defaultPath, fileName)
           : fileName.replace(new RegExp("/", "g"), "\\");
-        const franchise = new Franchise(franchisePath, { autoUnempty: isAutoUnemptyEnabled });
+        const franchise = new Franchise(franchisePath, { autoUnempty: isAutoUnemptyEnabled, gameYearOverride: isFtcFile ? gameYear : null, gameTypeOverride: isFtcFile ? gameType : null });
         return franchise;
       }
     } catch (e) {
@@ -410,11 +408,11 @@ function selectFranchiseFile(gameYear, isAutoUnemptyEnabled = false, isFtcFile =
 async function selectFranchiseFileAsync(gameYear, isAutoUnemptyEnabled = false, isFtcFile = false, gameType = GAME_TYPES.MADDEN) {
   const isCfb = gameType === GAME_TYPES.CFB;
   
-  const savesFolderName = isCfb ? 'EA Sports College Football' : 'Madden NFL';
+  const savesFolderName = isCfb ? 'EA SPORTS College Football' : 'Madden NFL';
   
   const documentsDir = path.join(os.homedir(), `Documents\\${savesFolderName} ${gameYear}\\saves\\`);
   const oneDriveDir = path.join(os.homedir(), `OneDrive\\Documents\\${savesFolderName} ${gameYear}\\saves\\`);
-  const filePrefix = isFtcFile ? FTC_FILE_INIT_KWD : BASE_FILE_INIT_KWD;
+  const filePrefix = isFtcFile ? (isCfb ? CFB_FTC_FILE_INIT_KWD : FTC_FILE_INIT_KWD) : (isCfb ? CFB_BASE_FILE_INIT_KWD : BASE_FILE_INIT_KWD);
 
   let defaultPath;
   if (fs.existsSync(documentsDir)) {
@@ -445,6 +443,7 @@ async function selectFranchiseFileAsync(gameYear, isAutoUnemptyEnabled = false, 
 
       return franchise;
     } catch (e) {
+      console.log(e);
       console.log("Invalid franchise file name/path given. Please provide a valid name or path and try again.");
       continue;
     }
@@ -616,12 +615,12 @@ function getGameYear(validGameYears, customMessage = null, gameType = GAME_TYPES
 }
 
 /**
- * Takes a list of valid game years and has the user select one.
- * If the user passes through a string/int instead of a list, it's returned immediately.
+ * Takes a list of valid game types and has the user select one.
+ * If the user passes through a string instead of a list, it's returned immediately.
  *
- * @param {number|string|Array<number|string>} validGameYears - A valid game year or an array of valid game years.
+ * @param {string|Array<string>} validGameTypes - A valid game type or an array of valid game types.
 
- * @returns {number} - Returns the selected gameYear
+ * @returns {string} - Returns the selected gameType
  */
 function getGameType(validGameTypes, customMessage = null) {
   // If we didn't pass through an array, simply return the value
@@ -634,7 +633,6 @@ function getGameType(validGameTypes, customMessage = null) {
   }
 
   let gameType;
-  const validGameTypesStr = validGameTypes.map(String);
 
   while (true) {
     const defaultMessage = `Select the game type you are using. Valid inputs are ${validGameTypes.join(
@@ -648,7 +646,7 @@ function getGameType(validGameTypes, customMessage = null) {
       EXIT_PROGRAM();
     }
 
-    if (validGameTypesStr.includes(String(gameType))) {
+    if (validGameTypes.includes(gameType)) {
       break;
     } else {
       console.log("Invalid option. Please try again.");
