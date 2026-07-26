@@ -246,9 +246,6 @@ function generateSchemaFile(table) {
   const columns = Object.keys(record._fields);
   const lines = [];
 
-  lines.push(`// Auto-generated schema for table: ${tableName}`);
-  lines.push(``);
-
   lines.push(`export enum ColumnNames {`);
   columns.forEach((col) => {
     const safeKey = col.replace(/[^a-zA-Z0-9_]/g, "_");
