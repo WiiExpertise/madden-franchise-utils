@@ -7,15 +7,14 @@ const FranchiseUtils = require('../Utils/FranchiseUtils');
 const TRANSFER_SCHEDULE_FUNCTIONS = require('../retroSchedules/transferScheduleFromJson');
 
 // Required lookup files
-const teamLookup = JSON.parse(fs.readFileSync(path.join(__dirname, 'lookupFiles/teamLookup.json'), 'utf8'));
-const teamAbbrevLookup = JSON.parse(fs.readFileSync(path.join(__dirname, 'lookupFiles/teamAbbrevLookup.json'), 'utf8'));
 const teamIdentityLookup = JSON.parse(fs.readFileSync(path.join(__dirname, 'lookupFiles/teamIdentityLookup.json'), 'utf8'));
 const timeSlotLookup = JSON.parse(fs.readFileSync(path.join(__dirname, 'lookupFiles/timeSlotLookup.json'), 'utf8'));
 
 const validGameYears = [
 	FranchiseUtils.YEARS.M24,
 	FranchiseUtils.YEARS.M25,
-	FranchiseUtils.YEARS.M26
+	FranchiseUtils.YEARS.M26,
+	FranchiseUtils.YEARS.M27
 ];
 
 // Print tool header message
@@ -25,6 +24,9 @@ console.log(`This program will allow you to regenerate the schedule in your fran
 const gameYear = FranchiseUtils.getGameYear(validGameYears);
 const franchise = FranchiseUtils.selectFranchiseFile(gameYear);
 const tables = FranchiseUtils.getTablesObject(franchise);
+
+const teamLookup = JSON.parse(fs.readFileSync(path.join(__dirname, `lookupFiles/teamLookup${gameYear >= 27 ? '_27' : ''}.json`), 'utf8'));
+const teamAbbrevLookup = JSON.parse(fs.readFileSync(path.join(__dirname, `lookupFiles/teamAbbrevLookup${gameYear >= 27 ? '_27' : ''}.json`), 'utf8'));
 
 // Set up base schedule object
 const scheduleObject = {
