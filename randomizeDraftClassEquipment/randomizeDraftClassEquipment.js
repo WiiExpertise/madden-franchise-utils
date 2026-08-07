@@ -8,7 +8,8 @@ const characterVisualFunctions = require('../Utils/characterVisualsLookups/chara
 const validYears = [
 	FranchiseUtils.YEARS.M24,
 	FranchiseUtils.YEARS.M25,
-	FranchiseUtils.YEARS.M26
+	FranchiseUtils.YEARS.M26,
+	FranchiseUtils.YEARS.M27
 ];
 
 // Print tool header message

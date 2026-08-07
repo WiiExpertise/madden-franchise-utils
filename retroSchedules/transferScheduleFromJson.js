@@ -10,7 +10,7 @@ let franchise = null;
 const path = require('path');
 const fs = require('fs');
 const teamLookupPath = path.resolve(__dirname, 'teamLookup.json');
-const teamLookup = JSON.parse(fs.readFileSync(teamLookupPath, 'utf8'));
+let teamLookup = JSON.parse(fs.readFileSync(teamLookupPath, 'utf8'));
 
 const REGULAR_SEASON_WEEKS = 18;
 const PRESEASON_WEEKS = 4;
@@ -23,6 +23,11 @@ const MADDEN_TIMES = [570,780,965,985,1150,1215,1220,1340];
 function setFranchise(franchiseObj) {
   franchise = franchiseObj;
   tables = FranchiseUtils.getTablesObject(franchiseObj);
+  if(franchise.schema.meta.gameYear >= FranchiseUtils.YEARS.M27)
+  {
+    const teamLookupPath27 = path.resolve(__dirname, 'lookupFiles', `teamLookup_27.json`);
+    teamLookup = JSON.parse(fs.readFileSync(teamLookupPath27, 'utf8'));
+  }
 }
 
 function convertTimeToMinutes(timeString) {
