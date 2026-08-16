@@ -3,7 +3,8 @@ const FranchiseUtils = require('../Utils/FranchiseUtils');
 const prompt = require('prompt-sync')();
 
 const validGames = [
-	FranchiseUtils.YEARS.M26
+	FranchiseUtils.YEARS.M26,
+	FranchiseUtils.YEARS.M27
 ];
 
 // Print tool header message
@@ -76,16 +77,8 @@ franchise.on('ready', async function () {
 	}
 	while(isNaN(userSelection) || userSelection < 0 || (!teamList.find(team => team.rowNum === userSelection) && userSelection !== 999));
 
-	const selectedTeam = teamTable.records[userSelection];
-
-	console.log("\nClearing coach abilities...");
-
-	const headCoachRow = FranchiseUtils.getRowFromRef(selectedTeam.HeadCoach);
-	const offensiveCoachRow = FranchiseUtils.getRowFromRef(selectedTeam.OffensiveCoordinator);
-	const defensiveCoachRow = FranchiseUtils.getRowFromRef(selectedTeam.DefensiveCoordinator);
-
-	const coachesToUpdate = [headCoachRow, offensiveCoachRow, defensiveCoachRow];
-
+	let coachesToUpdate = [];
+	
 	if(userSelection === 999)
 	{
 		for(const teamEntry of teamList)
@@ -112,16 +105,47 @@ franchise.on('ready', async function () {
 			}
 		}
 	}
+	else
+	{
+		const selectedTeam = teamTable.records[userSelection];
+		const headCoachRow = FranchiseUtils.getRowFromRef(selectedTeam.HeadCoach);
+		const offensiveCoachRow = FranchiseUtils.getRowFromRef(selectedTeam.OffensiveCoordinator);
+		const defensiveCoachRow = FranchiseUtils.getRowFromRef(selectedTeam.DefensiveCoordinator);
+
+		coachesToUpdate.push(headCoachRow, offensiveCoachRow, defensiveCoachRow);
+	}
+
+	
+
+	console.log("\nClearing coach abilities...");
+
+	
 
 	for(const coachRow of coachesToUpdate)
 	{
 		const coach = coachTable.records[coachRow];
 
-		const playsheetTalents = FranchiseUtils.getRowAndTableIdFromRef(coach.PlaysheetTalents);
-		const gamedayTalents = FranchiseUtils.getRowAndTableIdFromRef(coach.GamedayTalents);
-		const wearAndTearTalents = FranchiseUtils.getRowAndTableIdFromRef(coach.WearAndTearTalents);
+		const talentArrayRecords = [];
+		const talentRefs = [];
 
-		const talentRefs = [playsheetTalents, gamedayTalents, wearAndTearTalents];
+		if(gameYear >= FranchiseUtils.YEARS.M27)
+		{
+			const staffTalents = FranchiseUtils.getRowAndTableIdFromRef(coach.StaffTalents);
+			const coachingTalentsTable = franchise.getTableById(staffTalents.tableId);
+			await FranchiseUtils.readTableRecords([coachingTalentsTable]);
+
+			talentRefs.push(FranchiseUtils.getRowAndTableIdFromRef(coachingTalentsTable.records[staffTalents.row].PlaysheetTalents), FranchiseUtils.getRowAndTableIdFromRef(coachingTalentsTable.records[staffTalents.row].GamedayTalents));
+
+		}
+		else
+		{
+			const playsheetTalents = FranchiseUtils.getRowAndTableIdFromRef(coach.PlaysheetTalents);
+			const gamedayTalents = FranchiseUtils.getRowAndTableIdFromRef(coach.GamedayTalents);
+			const wearAndTearTalents = FranchiseUtils.getRowAndTableIdFromRef(coach.WearAndTearTalents);
+
+			talentRefs.push(playsheetTalents, gamedayTalents, wearAndTearTalents);
+		}
+		
 
 		for(const talentRef of talentRefs)
 		{
@@ -129,7 +153,7 @@ franchise.on('ready', async function () {
 			{
 				continue;
 			}
-			
+
 			const talentArrayTable = franchise.getTableById(talentRef.tableId);
 			await FranchiseUtils.readTableRecords([talentArrayTable]);
 

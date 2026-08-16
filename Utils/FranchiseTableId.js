@@ -695,6 +695,7 @@ const tablesM27 = {
     coachTable: 1860529246,
     trainerTable: 122870842,
     talentArrayTable: 110252030,
+    coachingTalentsTable: 2844119002,
     gamedayTalentTable: 2367829965,
     wearAndTearTalentTable: 4284948299,
     playsheetTalentTable: 1018360439,
